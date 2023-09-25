@@ -16,7 +16,7 @@ Run a node:
 
 ```sh
 cd gui
-go run mod.go start
+go run gui.go start
 ```
 
 Then open the web GUI page `gui/web/index.html` and enter the peer's proxy
