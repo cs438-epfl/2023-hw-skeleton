@@ -201,7 +201,7 @@ func Test_HW0_Network_Multiple(t *testing.T) {
 		for i := 0; i < sendingN2; i++ {
 			pkt := z.GetRandomPkt(t)
 			n2Sent = append(n2Sent, pkt)
-			err := sock1.Send(n1Addr, pkt, 0)
+			err := sock2.Send(n1Addr, pkt, 0)
 			require.NoError(t, err)
 		}
 	}()
