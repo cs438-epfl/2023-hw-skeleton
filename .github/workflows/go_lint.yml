@@ -4,9 +4,9 @@ on:
   push:
 
 jobs:
-
   lint:
-    runs-on: ubuntu-latest
+    runs-on:
+      group: runners_v1
     steps:
       - name: Use Go = 1.21
         uses: actions/setup-go@v3
