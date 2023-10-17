@@ -16,19 +16,18 @@ var chanFac transport.Factory = channel.NewTransport
 // Test Loss Socket - drop rate 0%, 10%, 60%, 100%
 func Test_Disrupted_Loss(t *testing.T) {
 
-	SetRandomGenSeed(7165897632553559653)
-
 	// mapping of the drop rate to the number of received packets, with the set seed above. Those values might change if
 	// the seed is different.
 	receivedPackets := map[float64]int{
 		0:   10,
-		0.1: 10,
-		0.6: 3,
+		0.1: 9,
+		0.6: 4,
 		1:   0,
 	}
 
 	for _, dropRate := range []float64{0, 0.1, 0.6, 1.0} {
 		net := NewDisrupted(chanFac(), WithLossSocket(dropRate))
+		net.SetRandomGenSeed(7165897632553559653)
 
 		sock1, err := net.CreateSocket("127.0.0.1:0")
 		require.NoError(t, err)

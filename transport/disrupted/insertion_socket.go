@@ -3,6 +3,7 @@ package disrupted
 import (
 	"encoding/json"
 	"math"
+	"math/rand"
 	"sync"
 	"time"
 
@@ -17,6 +18,7 @@ import (
 type insertionSocket struct {
 	transport.ClosableSocket
 	insertionRate  float64 // 0-1
+	randGen        *rand.Rand
 	packetModifier packetModifier
 	wg             sync.WaitGroup
 	in             chan transport.Packet
@@ -26,7 +28,7 @@ type insertionSocket struct {
 
 // Generic packetModifier type: using a packet as seed,
 // can insert any number of other (possibly modified) packets into queue
-type packetModifier func(p transport.Packet, out chan transport.Packet)
+type packetModifier func(p transport.Packet, out chan transport.Packet, r *rand.Rand)
 
 func (s *insertionSocket) Start() { // non-blocking
 	s.in = make(chan transport.Packet, chanSize)
@@ -37,8 +39,8 @@ func (s *insertionSocket) Start() { // non-blocking
 		defer s.wg.Done()
 		for pkt := range s.in {
 			s.out <- pkt
-			if randGen.Float64() <= s.insertionRate {
-				s.packetModifier(pkt, s.out)
+			if s.randGen.Float64() <= s.insertionRate {
+				s.packetModifier(pkt, s.out, s.randGen)
 			}
 		}
 		close(s.out)
@@ -81,14 +83,14 @@ func (s *insertionSocket) Recv(timeout time.Duration) (transport.Packet, error) 
 
 // Duplicate
 func duplicator() packetModifier {
-	return func(packet transport.Packet, out chan transport.Packet) {
+	return func(packet transport.Packet, out chan transport.Packet, r *rand.Rand) {
 		out <- packet.Copy()
 	}
 }
 
 // Duplicate but change the source string
 func sourceSpoofer(spoofedSource string) packetModifier {
-	return func(packet transport.Packet, out chan transport.Packet) {
+	return func(packet transport.Packet, out chan transport.Packet, r *rand.Rand) {
 		h := packet.Header.Copy()
 		h.Source = spoofedSource
 		msg := packet.Msg.Copy()
@@ -101,7 +103,7 @@ func sourceSpoofer(spoofedSource string) packetModifier {
 
 // Duplicate but change the packetID
 func packetIDRandomizer() packetModifier {
-	return func(packet transport.Packet, out chan transport.Packet) {
+	return func(packet transport.Packet, out chan transport.Packet, r *rand.Rand) {
 		h := packet.Header.Copy()
 		h.PacketID = xid.New().String()
 		msg := packet.Msg.Copy()
@@ -114,8 +116,8 @@ func packetIDRandomizer() packetModifier {
 
 // Duplicate but change the payload
 func payloadRandomizer() packetModifier {
-	return func(packet transport.Packet, out chan transport.Packet) {
-		randomPayload := randGen.Intn(math.MaxInt32)
+	return func(packet transport.Packet, out chan transport.Packet, r *rand.Rand) {
+		randomPayload := r.Intn(math.MaxInt32)
 		b, _ := json.Marshal(randomPayload)
 		h := packet.Header.Copy()
 		out <- transport.Packet{

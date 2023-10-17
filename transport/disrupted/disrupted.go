@@ -15,30 +15,23 @@ const chanSize = 1024             // Size of buffered channel to use, when relev
 const poolSize = 100              // (max) Size of worker pool to use, when relevant
 const packetTimeout = time.Second //
 
-// global random generator
-var randGen *rand.Rand
-
-// initialization of the random generator to a default seed
-func init() {
-	SetRandomGenSeed(0)
-}
-
-// SetRandomGenSeed utility method for changing the seed of the random generator
-func SetRandomGenSeed(seed int64) {
-	randGen = rand.New(rand.NewSource(seed))
-}
-
 // Transport implements a transport layer wrapper simulating network glitches
 //
 // - implements transport.Transport
 type Transport struct {
 	transport.Transport
 	options []Option
+	randGen *rand.Rand
 }
 
 // NewDisrupted returns a new disrupted transport implementation.
-func NewDisrupted(t transport.Transport, o ...Option) transport.Transport {
-	return &Transport{t, o}
+func NewDisrupted(t transport.Transport, o ...Option) *Transport {
+	return &Transport{t, o, rand.New(rand.NewSource(0))}
+}
+
+// SetRandomGenSeed utility method for changing the seed of the random generator
+func (t *Transport) SetRandomGenSeed(seed int64) {
+	t.randGen.Seed(seed)
 }
 
 // CreateSocket implements transport.Transport
@@ -48,9 +41,9 @@ func (t *Transport) CreateSocket(address string) (transport.ClosableSocket, erro
 		return nil, xerrors.Errorf("failed to create underlying socket: %v", err)
 	}
 	for _, opt := range t.options {
-		s = opt(s)
+		s = opt(s, t.randGen)
 	}
-	s = withTopSocket()(s)
+	s = withTopSocket()(s, t.randGen)
 	return s, nil
 }
 

@@ -2,6 +2,7 @@ package disrupted
 
 import (
 	"math"
+	"math/rand"
 	"sync"
 	"time"
 
@@ -9,20 +10,21 @@ import (
 )
 
 // Option represents a wrapper around a Socket
-type Option func(transport.ClosableSocket) transport.ClosableSocket
+type Option func(transport.ClosableSocket, *rand.Rand) transport.ClosableSocket
 
 func WithLossSocket(dropRate float64) Option {
-	return func(rawSocket transport.ClosableSocket) transport.ClosableSocket {
-		return &lossSocket{rawSocket, dropRate}
+	return func(rawSocket transport.ClosableSocket, r *rand.Rand) transport.ClosableSocket {
+		return &lossSocket{rawSocket, dropRate, r}
 	}
 }
 
 func withGenericPacketModifier(pm packetModifier, rate float64) Option {
-	return func(rawSocket transport.ClosableSocket) transport.ClosableSocket {
+	return func(rawSocket transport.ClosableSocket, r *rand.Rand) transport.ClosableSocket {
 		s := insertionSocket{
 			ClosableSocket: rawSocket,
 			packetModifier: pm,
 			insertionRate:  rate,
+			randGen:        r,
 		}
 		s.Start()
 		return &s
@@ -46,8 +48,8 @@ func WithDuplicator(insertionRate float64) Option {
 }
 
 func WithGenericDelay(delayFunc DelayFunction) Option {
-	return func(rawSocket transport.ClosableSocket) transport.ClosableSocket {
-		f := delaySocket{rawSocket, delayFunc, sync.WaitGroup{}, nil, nil}
+	return func(rawSocket transport.ClosableSocket, r *rand.Rand) transport.ClosableSocket {
+		f := delaySocket{rawSocket, delayFunc, sync.WaitGroup{}, nil, r, nil}
 		f.Start()
 		return &f
 	}
@@ -69,7 +71,7 @@ func WithJam(jamTimeout time.Duration, jamBufferSize int) Option {
 	if jamTimeout == 0 {
 		jamTimeout = math.MaxInt
 	}
-	return func(rawSocket transport.ClosableSocket) transport.ClosableSocket {
+	return func(rawSocket transport.ClosableSocket, r *rand.Rand) transport.ClosableSocket {
 		f := jamSocket{
 			ClosableSocket:  rawSocket,
 			saturationGroup: sync.WaitGroup{},
@@ -83,7 +85,7 @@ func WithJam(jamTimeout time.Duration, jamBufferSize int) Option {
 }
 
 func withTopSocket() Option {
-	return func(rawSocket transport.ClosableSocket) transport.ClosableSocket {
+	return func(rawSocket transport.ClosableSocket, r *rand.Rand) transport.ClosableSocket {
 		return &topSocket{rawSocket, packets{}}
 	}
 }

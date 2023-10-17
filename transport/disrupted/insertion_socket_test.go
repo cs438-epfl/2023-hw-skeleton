@@ -14,19 +14,18 @@ import (
 // Test GenericModifier Socket using duplicator - insertion rate 0%, 10%, 60%, 100%
 func Test_Disrupted_Duplicator(t *testing.T) {
 
-	SetRandomGenSeed(7165897632553559652)
-
 	// mapping of the drop rate to the number of received packets, with the set seed above. Those values might change if
 	// the seed is different.
 	receivedPackets := map[float64]int{
 		0:   10,
 		0.1: 11,
-		0.6: 16,
+		0.6: 15,
 		1:   20,
 	}
 
 	for _, insertRate := range []float64{0, 0.1, 0.6, 1.0} {
 		net := NewDisrupted(chanFac(), WithDuplicator(insertRate))
+		net.SetRandomGenSeed(7165897632553559652)
 
 		sock1, err := net.CreateSocket("127.0.0.1:0")
 		require.NoError(t, err)
@@ -62,8 +61,9 @@ func Test_Packet_Duplicator(t *testing.T) {
 	testChan := make(chan transport.Packet)
 	pkt := z.GetRandomPkt(t)
 	pktCopy := pkt.Copy()
+	n := NewDisrupted(nil) // Emulate an underlying DisruptedLayer
 
-	go duplicator()(pkt, testChan)
+	go duplicator()(pkt, testChan, n.randGen)
 	p := <-testChan
 
 	// pointer comparison, should be false as the address of the duplicated
@@ -81,8 +81,9 @@ func Test_Source_Spoofer(t *testing.T) {
 	testChan := make(chan transport.Packet)
 	pkt := z.GetRandomPkt(t)
 	pktCopy := pkt.Copy()
+	n := NewDisrupted(nil) // Emulate an underlying DisruptedLayer
 
-	go sourceSpoofer("testString")(pkt, testChan)
+	go sourceSpoofer("testString")(pkt, testChan, n.randGen)
 	p := <-testChan
 	require.Equal(t, *pktCopy.Header, *pkt.Header)
 	require.Equal(t, *pktCopy.Msg, *pkt.Msg)
@@ -102,8 +103,9 @@ func Test_PacketID_Randomizer(t *testing.T) {
 	testChan := make(chan transport.Packet)
 	pkt := z.GetRandomPkt(t)
 	pktCopy := pkt.Copy()
+	n := NewDisrupted(nil) // Emulate an underlying DisruptedLayer
 
-	go packetIDRandomizer()(pkt, testChan)
+	go packetIDRandomizer()(pkt, testChan, n.randGen)
 	p := <-testChan
 	require.Equal(t, *pktCopy.Header, *pkt.Header)
 	require.Equal(t, *pktCopy.Msg, *pkt.Msg)
@@ -120,13 +122,14 @@ func Test_PacketID_Randomizer(t *testing.T) {
 // Tests the Payload Randomizer function
 func Test_Payload_Randomizer(t *testing.T) {
 
-	SetRandomGenSeed(495957731692)
+	net := NewDisrupted(nil) // Emulate an underlying DisruptedLayer
+	net.SetRandomGenSeed(495957731692)
 
 	testChan := make(chan transport.Packet)
 	pkt := z.GetRandomPkt(t)
 	pktCopy := pkt.Copy()
 
-	go payloadRandomizer()(pkt, testChan)
+	go payloadRandomizer()(pkt, testChan, net.randGen)
 	p := <-testChan
 
 	require.Equal(t, *pktCopy.Header, *pkt.Header)

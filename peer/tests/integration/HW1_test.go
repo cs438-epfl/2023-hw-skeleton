@@ -122,14 +122,14 @@ func fetchMessages(nodes []z.TestNode, msgs [][]*types.ChatMessage, out io.Write
 // Make every node send a broadcast message to every other nodes, with a random
 // topology.
 func Test_HW1_Integration_Broadcast_Random(t *testing.T) {
-	getTestRandom := func(commonLayer transport.Transport, singleNodeLayer transport.Transport) func(*testing.T) {
+	getTestRandom := func(commonLayer transport.Transport, disruptedLayer *disrupted.Transport) func(*testing.T) {
 		return func(t *testing.T) {
 
 			// We skip any variation of this test for Windows OS due to the underlying network stack
 			skipIfWIndows(t)
-
-			disrupted.SetRandomGenSeed(1)
-
+			if disruptedLayer != nil {
+				disruptedLayer.SetRandomGenSeed(1)
+			}
 			nReference := 10
 			nStudent := 10
 
@@ -155,8 +155,8 @@ func Test_HW1_Integration_Broadcast_Random(t *testing.T) {
 			// we then check whether a transport layer way provided for a single node (i.e. a disrupted layer)
 			// if it is the case, we set this transport layer to one of the student-transport nodes.
 			current := nReference
-			if singleNodeLayer != nil {
-				nodes[current] = z.NewTestNode(t, studentFac, singleNodeLayer, "127.0.0.1:0",
+			if disruptedLayer != nil {
+				nodes[current] = z.NewTestNode(t, studentFac, disruptedLayer, "127.0.0.1:0",
 					z.WithAntiEntropy(antiEntropy),
 					z.WithHeartbeat(0),
 					z.WithAckTimeout(ackTimeout))
@@ -260,13 +260,12 @@ func Test_HW1_Integration_Broadcast_Random(t *testing.T) {
 // After some time, a bridge node connects both graphs.
 // We then test that both sides have caught up with the other's rumors.
 func Test_HW1_Integration_Broadcast_Subgraph(t *testing.T) {
-	getTestDisconnected := func(commonLayer transport.Transport, bridgeNodeLayer transport.Transport) func(*testing.T) {
+	getTestDisconnected := func(commonLayer transport.Transport, disruptedLayer *disrupted.Transport) func(*testing.T) {
+		disruptedLayer.SetRandomGenSeed(1)
 		return func(t *testing.T) {
 
 			// We skip any variation of this test for Windows OS due to the underlying network stack
 			skipIfWIndows(t)
-
-			disrupted.SetRandomGenSeed(1)
 
 			nLeft := 10
 			nRight := 10
@@ -291,11 +290,7 @@ func Test_HW1_Integration_Broadcast_Subgraph(t *testing.T) {
 					z.WithHeartbeat(0),
 					z.WithAckTimeout(ackTimeout))
 			}
-
-			if bridgeNodeLayer == nil {
-				bridgeNodeLayer = udpFac()
-			}
-			*nodeBridge = z.NewTestNode(t, studentFac, bridgeNodeLayer, "127.0.0.1:0",
+			*nodeBridge = z.NewTestNode(t, studentFac, disruptedLayer, "127.0.0.1:0",
 				z.WithAntiEntropy(antiEntropy),
 				z.WithHeartbeat(time.Hour), // we just need the initial heartbeat to be triggered
 				z.WithAckTimeout(ackTimeout),
@@ -379,7 +374,7 @@ func Test_HW1_Integration_Broadcast_Subgraph(t *testing.T) {
 		}
 	}
 	t.Run("UDP transport with a normal bridge node",
-		getTestDisconnected(udpFac(), udpFac()))
+		getTestDisconnected(udpFac(), disrupted.NewDisrupted(udpFac())))
 	t.Run("UDP transport with a slightly jammed bridge node",
 		getTestDisconnected(udpFac(), disrupted.NewDisrupted(udpFac(), disrupted.WithJam(1*time.Second, 2))))
 	t.Run("UDP transport with a heavily jammed bridge node",

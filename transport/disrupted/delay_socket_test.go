@@ -11,10 +11,9 @@ import (
 // Tests that a fixed delay is applied when receiving packets
 func Test_Delay(t *testing.T) {
 
-	SetRandomGenSeed(29117685307434355)
-
 	for _, delay := range []time.Duration{1 * time.Millisecond, 100 * time.Millisecond, 500 * time.Millisecond, 1 * time.Second} { // in ms
 		net := NewDisrupted(chanFac(), WithFixedDelay(delay))
+		net.SetRandomGenSeed(29117685307434355)
 
 		sock1, err := net.CreateSocket("127.0.0.1:0")
 		require.NoError(t, err)
@@ -51,16 +50,17 @@ func Test_Delay(t *testing.T) {
 // Test that the exponential delay returns the correct value, given a constant seed
 func Test_Delay_Functions(t *testing.T) {
 
-	SetRandomGenSeed(30510822542570081)
+	net := NewDisrupted(nil)
+	net.SetRandomGenSeed(30510822542570081)
 
 	// FixedDelay
-	require.Equal(t, FixedDelay(time.Second)(time.Now()), time.Second)
+	require.Equal(t, FixedDelay(time.Second)(time.Now(), net.randGen), time.Second)
 
 	// ExponentialDelay
 	mean := time.Second * 3 // 3s
 	experimentalMean := time.Duration(0)
 	for i := 0; i < 1000; i++ {
-		experimentalMean += ExponentialDelay(mean)(time.Now())
+		experimentalMean += ExponentialDelay(mean)(time.Now(), net.randGen)
 	}
 
 	// the Exponential Delay should have a fixed value, since the random generator is seeded
@@ -72,5 +72,5 @@ func Test_Delay_Functions(t *testing.T) {
 	freq := 10.0
 	period := time.Second / 10
 	t0 := time.Now()
-	require.Equal(t, SineDelay(amp, freq)(t0), SineDelay(amp, freq)(t0.Add(period)))
+	require.Equal(t, SineDelay(amp, freq)(t0, net.randGen), SineDelay(amp, freq)(t0.Add(period), net.randGen))
 }

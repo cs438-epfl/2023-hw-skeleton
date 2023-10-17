@@ -10,10 +10,9 @@ import (
 
 func Test_Jam(t *testing.T) {
 
-	SetRandomGenSeed(29117685307434355)
-
 	// Create a jammed network, with 5-packets and infinite timeout jams
 	net := NewDisrupted(chanFac(), WithJam(0, 5))
+	net.SetRandomGenSeed(29117685307434355)
 
 	sock1, err := net.CreateSocket("127.0.0.1:0")
 	require.NoError(t, err)
@@ -67,10 +66,9 @@ func Test_Jam(t *testing.T) {
 
 func Test_Jam_Timeout(t *testing.T) {
 
-	SetRandomGenSeed(29117685307434355)
-
 	// Create a jammed network, with 5-packets and 500ms timeout jams
 	net := NewDisrupted(chanFac(), WithJam(500*time.Millisecond, 5))
+	net.SetRandomGenSeed(29117685307434355)
 
 	sock1, err := net.CreateSocket("127.0.0.1:0")
 	require.NoError(t, err)

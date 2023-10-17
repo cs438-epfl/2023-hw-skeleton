@@ -1,6 +1,7 @@
 package disrupted
 
 import (
+	"math/rand"
 	"time"
 
 	"go.dedis.ch/cs438/transport"
@@ -10,6 +11,7 @@ import (
 type lossSocket struct {
 	transport.ClosableSocket
 	dropRate float64 //0-1
+	randGen  *rand.Rand
 }
 
 func (s *lossSocket) Recv(timeout time.Duration) (transport.Packet, error) {
@@ -19,7 +21,7 @@ func (s *lossSocket) Recv(timeout time.Duration) (transport.Packet, error) {
 	}
 	// if the random float is inferior to the drop rate,
 	//we ignore the received packet and get the next one
-	val := randGen.Float64()
+	val := s.randGen.Float64()
 	if val < s.dropRate {
 		return s.Recv(timeout)
 	}
