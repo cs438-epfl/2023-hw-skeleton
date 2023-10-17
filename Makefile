@@ -2,6 +2,9 @@ export GLOG = warn
 export BINLOG = warn
 export HTTPLOG = warn
 export GORACE = halt_on_error=1
+export GNODES = 10
+# how many benchmark iterations to average on
+export BENCHTIME = "10x"
 
 all: lint vet test
 
@@ -35,6 +38,23 @@ test_int_hw2:
 
 test_int_hw3:
 	go test -timeout 5m -v -race -run Test_HW3 ./peer/tests/integration
+
+# JSONIFY is set to "-json" in CI to format for GitHub, empty for displaying locally
+# || true allows to ignore error code and allow for smoother output logging
+test_bench_hw1:
+	@GLOG=no go test -v ${JSONIFY} -timeout 1m -run Test_HW1 -v -count 1 --tags=performance -benchtime=${BENCHTIME} ./peer/tests/perf/ || true
+
+test_bench_hw2:
+	@GLOG=no go test -v ${JSONIFY} -timeout 7m -run Test_HW2 -v -count 1 --tags=performance -benchtime=${BENCHTIME} ./peer/tests/perf/ || true
+
+test_bench_hw3: test_bench_hw3_tlc test_bench_hw3_consensus
+
+test_bench_hw3_tlc:
+	@GLOG=no go test -v ${JSONIFY} -timeout 7m -run Test_HW3_BenchmarkTLC -v -count 1 --tags=performance -benchtime=${BENCHTIME} ./peer/tests/perf/ || true
+
+test_bench_hw3_consensus:
+	@GLOG=no go test -v ${JSONIFY} -timeout 7m -run Test_HW3_BenchmarkConsensus -v -count 1 --tags=performance -benchtime=${BENCHTIME} ./peer/tests/perf/ || true
+
 
 lint:
 	# Coding style static check.

@@ -17,31 +17,28 @@ import (
 	"golang.org/x/xerrors"
 )
 
+// Run BenchmarkUTRSD and compare results to reference assessments
+// Run as follow: make test_bench_hw1
 func Test_HW1_BenchmarkSpamNode(t *testing.T) {
 	// run the benchmark
 	res := testing.Benchmark(BenchmarkSpamNode)
-
 	// assess allocation against thresholds, the performance thresholds is the allocation on GitHub
 	assessAllocs(t, res, []allocThresholds{
-		{"allocs great", 90, 15_000},
-		{"allocs ok", 140, 22_000},
-		{"allocs passable", 180, 30_000},
+		{"allocs great", 8_700, 3_600_000},
+		{"allocs ok", 14_500, 6_000_000},
+		{"allocs passable", 22_000, 8_900_000},
 	})
 
 	// assess execution speed against thresholds, the performance thresholds is the execution speed on GitHub
 	assessSpeed(t, res, []speedThresholds{
-		{"speed great", 20 * time.Millisecond},
-		{"speed ok", 100 * time.Millisecond},
-		{"speed passable", 600 * time.Millisecond},
+		{"speed great", 450 * time.Millisecond},
+		{"speed ok", 3_000 * time.Millisecond},
+		{"speed passable", 12_000 * time.Millisecond},
 	})
 }
 
-// Flood a node with n messages and wait on rumors to be processed. Rumors are
-// sent with expected sequences, so they should be processed. From the root
-// folder, you can run the benchmark as follow:
-//
-//	GLOG=no go test --bench BenchmarkSpamNode -benchtime 1000x -benchmem \
-//		-count 5 ./peer/tests/extra
+// Flood a node with n (-benchtime argument) messages and wait on rumors to be processed.
+// Rumors are sent with expected sequences, so they should be processed.
 func BenchmarkSpamNode(b *testing.B) {
 	// Disable outputs to not penalize implementations that make use of it
 	oldStdout := os.Stdout
@@ -51,12 +48,14 @@ func BenchmarkSpamNode(b *testing.B) {
 		os.Stdout = oldStdout
 	}()
 
-	n := b.N
 	transp := channelFac()
 
 	fake := z.NewFakeMessage(b)
 
-	notifications := make(chan struct{}, n)
+	// set number of messages to be sent (per benchmark iteration)
+	numberMessages := 100
+
+	notifications := make(chan struct{}, b.N*numberMessages)
 
 	handler := func(types.Message, transport.Packet) error {
 		notifications <- struct{}{}
@@ -66,10 +65,8 @@ func BenchmarkSpamNode(b *testing.B) {
 	sender, err := transp.CreateSocket("127.0.0.1:0")
 	require.NoError(b, err)
 
-	defer sender.Close()
-
-	receiver := z.NewTestNode(b, peerFac, transp, "127.0.0.1:0", z.WithMessage(fake, handler), z.WithContinueMongering(0))
-	defer receiver.Stop()
+	receiver := z.NewTestNode(b, peerFac, transp, "127.0.0.1:0", z.WithMessage(fake, handler),
+		z.WithContinueMongering(0))
 
 	src := sender.GetAddress()
 	dst := receiver.GetAddr()
@@ -80,18 +77,22 @@ func BenchmarkSpamNode(b *testing.B) {
 	_, err = rand.Read(acketPackedID)
 	require.NoError(b, err)
 
-	for i := 0; i < n; i++ {
-		// flip a coin to send either a rumor or an ack message
-		coin := rand.Float64() > 0.5
+	// run as many times as specified by b.N
+	for i := 0; i < b.N; i++ {
+		// send numberMessages messages (hard-coded)
+		for j := 0; j < numberMessages; j++ {
+			// flip a coin to send either a rumor or an ack message
+			coin := rand.Float64() > 0.5
 
-		if coin {
-			currentRumorSeq++
+			if coin {
+				currentRumorSeq++
 
-			err = sendRumor(fake, uint(currentRumorSeq), src, dst, sender)
-			require.NoError(b, err)
-		} else {
-			err = sendAck(string(acketPackedID), src, dst, sender)
-			require.NoError(b, err)
+				err = sendRumor(fake, uint(currentRumorSeq), src, dst, sender)
+				require.NoError(b, err)
+			} else {
+				err = sendAck(string(acketPackedID), src, dst, sender)
+				require.NoError(b, err)
+			}
 		}
 	}
 
@@ -104,6 +105,10 @@ func BenchmarkSpamNode(b *testing.B) {
 			b.Error("notification not received in time")
 		}
 	}
+
+	// cleanup
+	receiver.Stop()
+	sender.Close()
 }
 
 func sendRumor(msg types.Message, seq uint, src, dst string, sender transport.Socket) error {

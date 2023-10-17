@@ -1,4 +1,4 @@
-name: HW1
+name: HW1_tests
 
 on:
   push
@@ -35,11 +35,15 @@ jobs:
           # Pass GITHUB_TOKEN to avoid rate limiting.
           token: ${{ secrets.GITHUB_TOKEN }}
 
+      - name: Create temp directory
+        run: |
+          mkdir -p ./${{ github.run_attempt }}
+
       # Run tests with nice formatting
       - name: Run unit tests
         run: |
           set -euo pipefail
-          go test -json -timeout 5m -v -race -run Test_HW1 ./peer/tests/unit 2>&1 | tee /tmp/gotest-unit.log | gotestfmt
+          go test -json -timeout 5m -v -race -run Test_HW1 ./peer/tests/unit 2>&1 | tee ./${{ github.run_attempt }}/gotest-unit.log | gotestfmt
 
       - name: Run integration tests
         # Run integration tests even if the unit tests failed
@@ -47,19 +51,19 @@ jobs:
         if: success() || failure()
         run: |
           set -euo pipefail
-          go test -json -timeout 30m -v -race -run Test_HW1 ./peer/tests/integration 2>&1 | tee /tmp/gotest-inte.log | gotestfmt
+          go test -json -timeout 30m -v -race -run Test_HW1 ./peer/tests/integration 2>&1 | tee ./${{ github.run_attempt }}/gotest-inte.log | gotestfmt
 
       # Upload formatted logs
       - name: Upload unit test log
         uses: actions/upload-artifact@v2
         with:
           name: unit-test-hw1-log
-          path: /tmp/gotest-unit.log
+          path: ./${{ github.run_attempt }}/gotest-unit.log
           if-no-files-found: error
 
       - name: Upload integration test log
         uses: actions/upload-artifact@v2
         with:
           name: integration-test-hw1-log
-          path: /tmp/gotest-inte.log
+          path: ./${{ github.run_attempt }}/gotest-inte.log
           if-no-files-found: error
