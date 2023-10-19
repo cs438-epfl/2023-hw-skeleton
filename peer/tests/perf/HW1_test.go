@@ -11,11 +11,18 @@ import (
 
 	"github.com/stretchr/testify/require"
 	z "go.dedis.ch/cs438/internal/testing"
+
 	"go.dedis.ch/cs438/registry/standard"
 	"go.dedis.ch/cs438/transport"
 	"go.dedis.ch/cs438/types"
 	"golang.org/x/xerrors"
 )
+
+// This test executes the exact same function as the Benchmark below.
+// Its goal is mainly to raise any error that could occur during its execution as the benchmark hides them.
+func Test_HW1_SpamNode(t *testing.T) {
+	spamNode(t, 1)
+}
 
 // Run BenchmarkUTRSD and compare results to reference assessments
 // Run as follow: make test_bench_hw1
@@ -48,14 +55,18 @@ func BenchmarkSpamNode(b *testing.B) {
 		os.Stdout = oldStdout
 	}()
 
+	spamNode(b, b.N)
+}
+
+func spamNode(t require.TestingT, rounds int) {
 	transp := channelFac()
 
-	fake := z.NewFakeMessage(b)
+	fake := z.NewFakeMessage(t)
 
 	// set number of messages to be sent (per benchmark iteration)
 	numberMessages := 100
 
-	notifications := make(chan struct{}, b.N*numberMessages)
+	notifications := make(chan struct{}, rounds*numberMessages)
 
 	handler := func(types.Message, transport.Packet) error {
 		notifications <- struct{}{}
@@ -63,22 +74,19 @@ func BenchmarkSpamNode(b *testing.B) {
 	}
 
 	sender, err := transp.CreateSocket("127.0.0.1:0")
-	require.NoError(b, err)
+	require.NoError(t, err)
 
-	receiver := z.NewTestNode(b, peerFac, transp, "127.0.0.1:0", z.WithMessage(fake, handler),
+	receiver := z.NewTestNode(t, peerFac, transp, "127.0.0.1:0", z.WithMessage(fake, handler),
 		z.WithContinueMongering(0))
 
 	src := sender.GetAddress()
 	dst := receiver.GetAddr()
 
 	currentRumorSeq := 0
-	acketPackedID := make([]byte, 12)
+	ackID := make([]byte, 12)
 
-	_, err = rand.Read(acketPackedID)
-	require.NoError(b, err)
-
-	// run as many times as specified by b.N
-	for i := 0; i < b.N; i++ {
+	// run as many times as specified by rounds
+	for i := 0; i < rounds; i++ {
 		// send numberMessages messages (hard-coded)
 		for j := 0; j < numberMessages; j++ {
 			// flip a coin to send either a rumor or an ack message
@@ -88,10 +96,13 @@ func BenchmarkSpamNode(b *testing.B) {
 				currentRumorSeq++
 
 				err = sendRumor(fake, uint(currentRumorSeq), src, dst, sender)
-				require.NoError(b, err)
+				require.NoError(t, err)
 			} else {
-				err = sendAck(string(acketPackedID), src, dst, sender)
-				require.NoError(b, err)
+				_, err = rand.Read(ackID)
+				require.NoError(t, err)
+
+				err = sendAck(string(ackID), src, dst, sender)
+				require.NoError(t, err)
 			}
 		}
 	}
@@ -102,7 +113,7 @@ func BenchmarkSpamNode(b *testing.B) {
 		select {
 		case <-notifications:
 		case <-time.After(time.Second):
-			b.Error("notification not received in time")
+			t.Errorf("notification not received in time")
 		}
 	}
 

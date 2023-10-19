@@ -7,6 +7,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/stretchr/testify/require"
+
 	"go.dedis.ch/cs438/peer"
 	"go.dedis.ch/cs438/peer/impl"
 	"go.dedis.ch/cs438/registry/standard"
@@ -38,6 +40,8 @@ func assessSpeed(t *testing.T, res testing.BenchmarkResult, thresholds []speedTh
 	// report 1 result (sub-test) per performance threshold
 	for _, th := range thresholds {
 		t.Run(th.name, func(t *testing.T) {
+			require.Greater(t, res.T, 0*time.Second, "The benchmark execution failed, its result cannot be used")
+
 			if ns > th.ns.Nanoseconds() {
 				t.Errorf("%v > threshold %v", time.Duration(ns)*time.Nanosecond, th.ns)
 			} else {
@@ -56,6 +60,8 @@ func assessAllocs(t *testing.T, res testing.BenchmarkResult, thresholds []allocT
 	// report 1 result (sub-test) per performance threshold
 	for _, th := range thresholds {
 		t.Run(th.name, func(t *testing.T) {
+			require.Greater(t, res.T, 0*time.Second, "The benchmark execution failed, its result cannot be used")
+
 			if allocedBytes > th.allocedBytes {
 				t.Errorf("%d allocedBytes > threshold (%d)", allocedBytes, th.allocedBytes)
 			} else {
