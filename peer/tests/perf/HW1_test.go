@@ -31,16 +31,16 @@ func Test_HW1_BenchmarkSpamNode(t *testing.T) {
 	res := testing.Benchmark(BenchmarkSpamNode)
 	// assess allocation against thresholds, the performance thresholds is the allocation on GitHub
 	assessAllocs(t, res, []allocThresholds{
-		{"allocs great", 8_700, 3_600_000},
-		{"allocs ok", 14_500, 6_000_000},
-		{"allocs passable", 22_000, 8_900_000},
+		{"allocs great", 10_500, 9_500_000},
+		{"allocs ok", 17_500, 15_700_000},
+		{"allocs passable", 27_000, 23_400_000},
 	})
 
 	// assess execution speed against thresholds, the performance thresholds is the execution speed on GitHub
 	assessSpeed(t, res, []speedThresholds{
-		{"speed great", 450 * time.Millisecond},
-		{"speed ok", 3_000 * time.Millisecond},
-		{"speed passable", 12_000 * time.Millisecond},
+		{"speed great", 18 * time.Millisecond},
+		{"speed ok", 120 * time.Millisecond},
+		{"speed passable", 480 * time.Millisecond},
 	})
 }
 
@@ -78,6 +78,20 @@ func spamNode(t require.TestingT, rounds int) {
 
 	receiver := z.NewTestNode(t, peerFac, transp, "127.0.0.1:0", z.WithMessage(fake, handler),
 		z.WithContinueMongering(0))
+
+	// Set goroutine to drain incoming messages
+	// and avoid intermediary buffers filling up
+	drain_stop := make(chan struct{})
+	go func() {
+		for {
+			select {
+			case <-drain_stop:
+				return
+			default:
+				sender.Recv(time.Second)
+			}
+		}
+	}()
 
 	src := sender.GetAddress()
 	dst := receiver.GetAddr()
@@ -120,6 +134,7 @@ func spamNode(t require.TestingT, rounds int) {
 	// cleanup
 	receiver.Stop()
 	sender.Close()
+	close(drain_stop)
 }
 
 func sendRumor(msg types.Message, seq uint, src, dst string, sender transport.Socket) error {
