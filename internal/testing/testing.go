@@ -461,6 +461,24 @@ func GetSocket(t *testing.T, transp transport.Transport, addr string) transport.
 	return sock
 }
 
+// DrainSocket will receive incoming messages of the sender to avoid filling up the buffer
+// It returns a function that must be called to stop the routine
+func DrainSocket(sender transport.Socket) func() {
+	drainStop := make(chan any)
+	go func() {
+		for {
+			select {
+			case <-drainStop:
+				return
+			default:
+				sender.Recv(time.Second)
+			}
+		}
+	}()
+
+	return func() { close(drainStop) }
+}
+
 // Terminable describes a peer that have a terminate function. Which is the case
 // if this is a binnode.
 type Terminable interface {

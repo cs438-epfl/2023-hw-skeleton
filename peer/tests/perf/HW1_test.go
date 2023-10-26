@@ -79,19 +79,9 @@ func spamNode(t require.TestingT, rounds int) {
 	receiver := z.NewTestNode(t, peerFac, transp, "127.0.0.1:0", z.WithMessage(fake, handler),
 		z.WithContinueMongering(0))
 
-	// Set goroutine to drain incoming messages
-	// and avoid intermediary buffers filling up
-	drain_stop := make(chan struct{})
-	go func() {
-		for {
-			select {
-			case <-drain_stop:
-				return
-			default:
-				sender.Recv(time.Second)
-			}
-		}
-	}()
+	// Drain incoming messages to avoid intermediary buffers filling up
+	drainStop := z.DrainSocket(sender)
+	defer drainStop()
 
 	src := sender.GetAddress()
 	dst := receiver.GetAddr()
@@ -134,7 +124,6 @@ func spamNode(t require.TestingT, rounds int) {
 	// cleanup
 	receiver.Stop()
 	sender.Close()
-	close(drain_stop)
 }
 
 func sendRumor(msg types.Message, seq uint, src, dst string, sender transport.Socket) error {
