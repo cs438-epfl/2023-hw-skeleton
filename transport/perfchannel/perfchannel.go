@@ -1,4 +1,7 @@
-package channel
+// Package perfchannel is a channel-based transport implementation
+// that doesn't save incoming/outgoing packets and maximizes performance
+// exclusively for the purpose of benchmark tests.
+package perfchannel
 
 import (
 	"fmt"
@@ -17,24 +20,24 @@ var counter uint32 // initialized by default to 0
 
 // NewTransport returns a channel-based transport service.
 func NewTransport() transport.Transport {
-	return &Transport{
+	return &PerfTransport{
 		incomings: make(map[string]chan transport.Packet),
 		traffic:   traffic.NewTraffic(),
 	}
 }
 
-// Transport is a simple transport implementation using channels
+// PerfTransport is a simple transport implementation using channels
 //
 // - implements transport.Transport
 // - implements transport.ClosableSocket
-type Transport struct {
+type PerfTransport struct {
 	sync.RWMutex
 	incomings map[string]chan transport.Packet
 	traffic   *traffic.Traffic
 }
 
 // CreateSocket implements transport.Transport
-func (t *Transport) CreateSocket(address string) (transport.ClosableSocket, error) {
+func (t *PerfTransport) CreateSocket(address string) (transport.ClosableSocket, error) {
 	t.Lock()
 	if strings.HasSuffix(address, ":0") {
 		address = address[:len(address)-2]
@@ -44,18 +47,15 @@ func (t *Transport) CreateSocket(address string) (transport.ClosableSocket, erro
 	t.incomings[address] = make(chan transport.Packet, 100)
 	t.Unlock()
 
-	return &Socket{
-		Transport: t,
-		myAddr:    address,
-
-		ins:  packets{},
-		outs: packets{},
+	return &PerfSocket{
+		PerfTransport: t,
+		myAddr:        address,
 	}, nil
 }
 
 // MustCreate returns a socket and panic if something goes wrong. This function
 // is mostly usefull in tests.
-func (t *Transport) MustCreate(address string) transport.ClosableSocket {
+func (t *PerfTransport) MustCreate(address string) transport.ClosableSocket {
 	socket, err := t.CreateSocket(address)
 	if err != nil {
 		panic("failed to create socket: " + err.Error())
@@ -64,19 +64,16 @@ func (t *Transport) MustCreate(address string) transport.ClosableSocket {
 	return socket
 }
 
-// Socket provide a network layer using channels.
+// PerfSocket provide a performance-focused network layer using channels.
 //
 // - implements transport.Socket
-type Socket struct {
-	*Transport
+type PerfSocket struct {
+	*PerfTransport
 	myAddr string
-
-	ins  packets
-	outs packets
 }
 
 // Close implements transport.Socket
-func (s *Socket) Close() error {
+func (s *PerfSocket) Close() error {
 	s.Lock()
 	defer s.Unlock()
 
@@ -86,7 +83,7 @@ func (s *Socket) Close() error {
 }
 
 // Send implements transport.Socket.
-func (s *Socket) Send(dest string, pkt transport.Packet, timeout time.Duration) error {
+func (s *PerfSocket) Send(dest string, pkt transport.Packet, timeout time.Duration) error {
 	s.RLock()
 	to, ok := s.incomings[dest]
 
@@ -100,22 +97,17 @@ func (s *Socket) Send(dest string, pkt transport.Packet, timeout time.Duration) 
 		timeout = math.MaxInt64
 	}
 
-	s.outs.Lock()
-	defer s.outs.Unlock()
 	select {
 	case to <- pkt.Copy():
 	case <-time.After(timeout):
 		return transport.TimeoutError(timeout)
 	}
 
-	s.outs.addUnsafe(pkt)
-	s.traffic.LogSent(pkt.Header.RelayedBy, dest, pkt)
-
 	return nil
 }
 
 // Recv implements transport.Socket.
-func (s *Socket) Recv(timeout time.Duration) (transport.Packet, error) {
+func (s *PerfSocket) Recv(timeout time.Duration) (transport.Packet, error) {
 	s.RLock()
 	myChan := s.incomings[s.myAddr]
 	s.RUnlock()
@@ -124,51 +116,23 @@ func (s *Socket) Recv(timeout time.Duration) (transport.Packet, error) {
 	case <-time.After(timeout):
 		return transport.Packet{}, transport.TimeoutError(timeout)
 	case pkt := <-myChan:
-		s.traffic.LogRecv(pkt.Header.RelayedBy, s.myAddr, pkt)
-		s.ins.add(pkt)
 		return pkt, nil
 	}
 }
 
 // GetAddress implements transport.Socket.
-func (s *Socket) GetAddress() string {
+func (s *PerfSocket) GetAddress() string {
 	return s.myAddr
 }
 
 // GetIns implements transport.Socket
-func (s *Socket) GetIns() []transport.Packet {
-	return s.ins.getAll()
+func (s *PerfSocket) GetIns() []transport.Packet {
+	// for performance reasons, we don't try to monitor packets
+	panic("perfchannel doesn't implement GetIns - consider using channel transport")
 }
 
 // GetOuts implements transport.Socket
-func (s *Socket) GetOuts() []transport.Packet {
-	return s.outs.getAll()
-}
-
-type packets struct {
-	sync.Mutex
-	data []transport.Packet
-}
-
-func (p *packets) add(pkt transport.Packet) {
-	p.Lock()
-	p.addUnsafe(pkt)
-	p.Unlock()
-}
-
-func (p *packets) addUnsafe(pkt transport.Packet) {
-	p.data = append(p.data, pkt.Copy())
-}
-
-func (p *packets) getAll() []transport.Packet {
-	p.Lock()
-	defer p.Unlock()
-
-	res := make([]transport.Packet, len(p.data))
-
-	for i, pkt := range p.data {
-		res[i] = pkt.Copy()
-	}
-
-	return res
+func (s *PerfSocket) GetOuts() []transport.Packet {
+	// for performance reasons, we don't try to monitor packets
+	panic("perfchannel doesn't implement GetOuts - consider using channel transport")
 }

@@ -31,16 +31,16 @@ func Test_HW1_BenchmarkSpamNode(t *testing.T) {
 	res := testing.Benchmark(BenchmarkSpamNode)
 	// assess allocation against thresholds, the performance thresholds is the allocation on GitHub
 	assessAllocs(t, res, []allocThresholds{
-		{"allocs great", 10_500, 9_500_000},
-		{"allocs ok", 17_500, 15_700_000},
-		{"allocs passable", 27_000, 23_400_000},
+		{"allocs great", 109_000, 515_000_000},
+		{"allocs ok", 182_000, 860_000_000},
+		{"allocs passable", 280_000, 1_290_000_000},
 	})
 
 	// assess execution speed against thresholds, the performance thresholds is the execution speed on GitHub
 	assessSpeed(t, res, []speedThresholds{
-		{"speed great", 18 * time.Millisecond},
-		{"speed ok", 120 * time.Millisecond},
-		{"speed passable", 480 * time.Millisecond},
+		{"speed great", 3 * time.Second},
+		{"speed ok", 20 * time.Second},
+		{"speed passable", 80 * time.Second},
 	})
 }
 
@@ -64,7 +64,7 @@ func spamNode(t require.TestingT, rounds int) {
 	fake := z.NewFakeMessage(t)
 
 	// set number of messages to be sent (per benchmark iteration)
-	numberMessages := 100
+	numberMessages := 1000
 
 	notifications := make(chan struct{}, rounds*numberMessages)
 
