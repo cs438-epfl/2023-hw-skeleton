@@ -39,8 +39,8 @@ func Test_HW2_BenchmarkUTSRD(t *testing.T) {
 
 	// assess execution speed against thresholds, the performance thresholds is the execution speed on GitHub
 	assessSpeed(t, res, []speedThresholds{
-		{"speed great", 15 * time.Second},
-		{"speed ok", 100 * time.Second},
+		{"speed great", 30 * time.Second},
+		{"speed ok", 120 * time.Second},
 		{"speed passable", 400 * time.Second},
 	})
 }

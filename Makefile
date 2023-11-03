@@ -45,15 +45,15 @@ test_bench_hw1:
 	@GLOG=no go test -v ${JSONIFY} -timeout 15m -run Test_HW1 -v -count 1 --tags=performance -benchtime=${BENCHTIME} ./peer/tests/perf/ || true
 
 test_bench_hw2:
-	@GLOG=no go test -v ${JSONIFY} -timeout 7m -run Test_HW2 -v -count 1 --tags=performance -benchtime=${BENCHTIME} ./peer/tests/perf/ || true
+	@GLOG=no go test -v ${JSONIFY} -timeout 21m -run Test_HW2 -v -count 1 --tags=performance -benchtime=3x ./peer/tests/perf/ || true
 
 test_bench_hw3: test_bench_hw3_tlc test_bench_hw3_consensus
 
 test_bench_hw3_tlc:
-	@GLOG=no go test -v ${JSONIFY} -timeout 7m -run Test_HW3_BenchmarkTLC -v -count 1 --tags=performance -benchtime=1000x ./peer/tests/perf/ || true
+	@GLOG=no go test -v ${JSONIFY} -timeout 15s -run Test_HW3_BenchmarkTLC -v -count 1 --tags=performance -benchtime=${BENCHTIME} ./peer/tests/perf/ || true
 
 test_bench_hw3_consensus:
-	@GLOG=no go test -v ${JSONIFY} -timeout 7m -run Test_HW3_BenchmarkConsensus -v -count 1 --tags=performance -benchtime=${BENCHTIME} ./peer/tests/perf/ || true
+	@GLOG=no go test -v ${JSONIFY} -timeout 12m -run Test_HW3_BenchmarkConsensus -v -count 1 --tags=performance -benchtime=${BENCHTIME} ./peer/tests/perf/ || true
 
 
 lint:

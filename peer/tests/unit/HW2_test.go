@@ -800,9 +800,11 @@ func Test_HW2_SearchAll_Local(t *testing.T) {
 
 	// setting entries in the name storage
 	nameStore := node1.GetStorage().GetNamingStore()
+	blobStore := node1.GetStorage().GetDataBlobStore()
 
 	for i, n := range names {
 		nameStore.Set(n, []byte(mhs[i]))
+		blobStore.Set(mhs[i], []byte("metaFileData"))
 	}
 
 	// > expecting the search to return all names
@@ -1029,11 +1031,13 @@ func Test_HW2_SearchAll_Remote_Relay(t *testing.T) {
 
 	// setting entries in the name storage of node 1
 	nameStore := node1.GetStorage().GetNamingStore()
+	blobStore := node1.GetStorage().GetDataBlobStore()
 	nameStore.Set("filenameA", []byte("mhA"))
+	blobStore.Set("mhA", []byte("c1A"))
 
 	// setting entry on node 2
 	nameStore = node2.GetStorage().GetNamingStore()
-	blobStore := node2.GetStorage().GetDataBlobStore()
+	blobStore = node2.GetStorage().GetDataBlobStore()
 
 	nameStore.Set("filenameB", []byte("mhB"))
 	blobStore.Set("mhB", []byte("c1B"))
@@ -1150,10 +1154,12 @@ func Test_HW2_SearchAll_Remote_Budget(t *testing.T) {
 	// setting entries in the name storage of node 1
 	nameStore := node1.GetStorage().GetNamingStore()
 	nameStore.Set("filenameA", []byte("mhA"))
+	blobStore := node1.GetStorage().GetDataBlobStore()
+	blobStore.Set("mhA", []byte("c1A"))
 
 	// setting entry on node 2
 	nameStore = node2.GetStorage().GetNamingStore()
-	blobStore := node2.GetStorage().GetDataBlobStore()
+	blobStore = node2.GetStorage().GetDataBlobStore()
 
 	nameStore.Set("filenameB", []byte("mhB"))
 	blobStore.Set("mhB", []byte("c1B"))
