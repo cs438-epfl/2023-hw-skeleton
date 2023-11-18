@@ -9,7 +9,6 @@ jobs:
       group: runners_v1
     env:
       LLVL: trace
-      GLOG: warn
     steps:
       - name: Use Go = 1.21
         uses: actions/setup-go@v3

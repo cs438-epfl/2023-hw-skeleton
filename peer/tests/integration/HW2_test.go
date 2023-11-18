@@ -52,7 +52,8 @@ func Test_HW2_Integration_Scenario(t *testing.T) {
 					s := &state{t: t}
 					defer stop(s)
 
-					for k := 0; k < maxStage; k++ {
+					// iterating over all the stages, from 0 (setup) to maxStage (included)
+					for k := 0; k < maxStage+1; k++ {
 						stages[k](s)
 					}
 				})
@@ -62,8 +63,8 @@ func Test_HW2_Integration_Scenario(t *testing.T) {
 
 	t.Run("non-disrupted topology", scenarios(udpFac(), udpFac()))
 	t.Run("Jammed node D and node A",
-		scenarios(disrupted.NewDisrupted(udpFac(), disrupted.WithJam(250*time.Millisecond, 8)),
-			disrupted.NewDisrupted(udpFac(), disrupted.WithJam(250*time.Millisecond, 8))))
+		scenarios(disrupted.NewDisrupted(udpFac(), disrupted.WithJam(time.Second, 8)),
+			disrupted.NewDisrupted(udpFac(), disrupted.WithJam(time.Second, 8))))
 	t.Run("delayed node A",
 		scenarios(disrupted.NewDisrupted(udpFac(), disrupted.WithFixedDelay(500*time.Millisecond)), udpFac()))
 }
@@ -184,7 +185,7 @@ func tagAndSearch(s *state) *state {
 	require.NoError(s.t, err)
 
 	// > NodeA should be able to index file from B
-	names, err := s.nodes["nodeA"].SearchAll(*regexp.MustCompile("file.*"), 3, time.Second*2)
+	names, err := s.nodes["nodeA"].SearchAll(*regexp.MustCompile("file.*"), 3, time.Second*3)
 	require.NoError(s.t, err)
 	require.Len(s.t, names, 1)
 	require.Equal(s.t, "fileB", names[0])
@@ -242,7 +243,7 @@ func nodeDDownload(s *state) *state {
 		Initial: 1,
 		Factor:  2,
 		Retry:   5,
-		Timeout: time.Second * 2,
+		Timeout: time.Second * 3,
 	}
 	name, err := s.nodes["nodeA"].SearchFirst(*regexp.MustCompile("fileD"), conf)
 	require.NoError(s.t, err)
@@ -307,7 +308,7 @@ func newNodesSearch(s *state) *state {
 		Initial: 1,
 		Factor:  2,
 		Retry:   4,
-		Timeout: time.Second * 2,
+		Timeout: time.Second * 3,
 	}
 	name, err := s.nodes["nodeE"].SearchFirst(*regexp.MustCompile("fileB"), conf)
 	require.NoError(s.t, err)

@@ -1222,9 +1222,11 @@ func Test_HW3_Tag_Paxos_No_Consensus(t *testing.T) {
 
 	go func() {
 		err := node1.Tag("a", "b")
-		require.NoError(t, err)
 
-		close(tagDone)
+		if err == nil {
+			// If Tag() was successful, close the channel to notify the select below
+			close(tagDone)
+		}
 	}()
 
 	var outs []transport.Packet

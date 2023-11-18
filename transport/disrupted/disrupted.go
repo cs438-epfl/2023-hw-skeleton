@@ -11,9 +11,9 @@ import (
 
 // Constants used by DisruptedSockets
 
-const chanSize = 1024             // Size of buffered channel to use, when relevant
-const poolSize = 100              // (max) Size of worker pool to use, when relevant
-const packetTimeout = time.Second //
+const chanSize = 1024                        // Size of buffered channel to use, when relevant
+const poolSize = 100                         // (max) Size of worker pool to use, when relevant
+const packetTimeout = 500 * time.Millisecond //
 
 // Transport implements a transport layer wrapper simulating network glitches
 //

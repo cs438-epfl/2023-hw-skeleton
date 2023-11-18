@@ -205,7 +205,7 @@ func Test_HW2_Download_Local(t *testing.T) {
 	}
 
 	// metahash, computed by hand
-	mh := "6a0b1d67884e58786e97bc51544cbba4cc3e1279d8ff46da2fa32bcdb44a053e"
+	mh := "aec958bf4dc568c7748cbb42f42333fe5c2017d8034025f7277f80890e96afc9"
 
 	storage.Set(chunkHashes[0], chunks[0])
 	storage.Set(chunkHashes[1], chunks[1])
@@ -242,7 +242,7 @@ func Test_HW2_Download_Remote_No_Routing(t *testing.T) {
 	c2 := "3e744b9dc39389baf0c5a0660589b8402f3dbb49b89b3e75f2c9355852a3c677"
 
 	// metahash, computed by hand
-	mh := "6a0b1d67884e58786e97bc51544cbba4cc3e1279d8ff46da2fa32bcdb44a053e"
+	mh := "aec958bf4dc568c7748cbb42f42333fe5c2017d8034025f7277f80890e96afc9"
 
 	storage := node2.GetStorage().GetDataBlobStore()
 	storage.Set(c1, chunks[0])
@@ -285,7 +285,7 @@ func Test_HW2_Download_Remote_OneWay_Routing(t *testing.T) {
 	c2 := "3e744b9dc39389baf0c5a0660589b8402f3dbb49b89b3e75f2c9355852a3c677"
 
 	// metahash, computed by hand
-	mh := "6a0b1d67884e58786e97bc51544cbba4cc3e1279d8ff46da2fa32bcdb44a053e"
+	mh := "aec958bf4dc568c7748cbb42f42333fe5c2017d8034025f7277f80890e96afc9"
 
 	storage := node2.GetStorage().GetDataBlobStore()
 	storage.Set(c1, chunks[0])
@@ -630,7 +630,7 @@ func Test_HW2_Download_Duplication(t *testing.T) {
 	c2 := "3e744b9dc39389baf0c5a0660589b8402f3dbb49b89b3e75f2c9355852a3c677"
 
 	// metahash, computed by hand
-	mh := "6a0b1d67884e58786e97bc51544cbba4cc3e1279d8ff46da2fa32bcdb44a053e"
+	mh := "aec958bf4dc568c7748cbb42f42333fe5c2017d8034025f7277f80890e96afc9"
 
 	storage := node1.GetStorage().GetDataBlobStore()
 	storage.Set(c1, chunks[0])
@@ -649,6 +649,10 @@ func Test_HW2_Download_Duplication(t *testing.T) {
 
 	buf, err := node1.Download(mh)
 	require.NoError(t, err)
+
+	// Wait a bit to leave time for the duplicated packet to be handled
+	time.Sleep(time.Millisecond * 200)
+
 	require.Equal(t, data, buf)
 
 	// > Node1 should have sent one request
@@ -763,7 +767,7 @@ func Test_HW2_Tag_Resolve(t *testing.T) {
 // 2-15
 //
 // Searching on a peer that doesn't have anything should return an empty result
-func Test_HW2_SearchFirst_Empty(t *testing.T) {
+func Test_HW2_SearchAll_Empty(t *testing.T) {
 	transp := channel.NewTransport()
 
 	node1 := z.NewTestNode(t, peerFac, transp, "127.0.0.1:0", z.WithAutostart(false))
