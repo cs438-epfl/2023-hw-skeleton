@@ -750,30 +750,58 @@ func GetRandomPkt(t *testing.T) transport.Packet {
 	return pkt
 }
 
-// GetSocket is a handy function to create a socket and check for error
-func GetSocket(t *testing.T, transp transport.Transport, addr string) transport.ClosableSocket {
-	sock, err := transp.CreateSocket(addr)
-	require.NoError(t, err)
+type drainSocket struct {
+	transport.ClosableSocket
 
-	return sock
+	drainStop chan any
+	closed    bool
 }
 
-// DrainSocket will receive incoming messages of the sender to avoid filling up the buffer
-// It returns a function that must be called to stop the routine
-func DrainSocket(sender transport.Socket) func() {
-	drainStop := make(chan any)
-	go func() {
-		for {
-			select {
-			case <-drainStop:
-				return
-			default:
-				sender.Recv(time.Second)
-			}
+// This function will drain the received messages of the socket until it is closed.
+// This is useful to avoid blocking when sending messages to this socket.
+func (s *drainSocket) drain() {
+	for {
+		select {
+		case <-s.drainStop:
+			return
+		default:
+			s.Recv(time.Second)
 		}
-	}()
+	}
+}
 
-	return func() { close(drainStop) }
+func (s *drainSocket) Close() error {
+	// Close the drain routine only once
+	if !s.closed {
+		s.closed = true
+		close(s.drainStop)
+	}
+
+	return s.ClosableSocket.Close()
+}
+
+// NewSenderSocket creates a socket that can only act as a sender
+// as it will drain all the received messages.
+// This is useful to avoid blocking when sending messages to this socket.
+func NewSenderSocket(transp transport.Transport, address string) (transport.ClosableSocket, error) {
+	// First, create a normal socket
+	socket, err := transp.CreateSocket(address)
+	if err != nil {
+		return nil, err
+	}
+
+	// Wrap it in a drain socket
+	drainSocket := &drainSocket{
+		ClosableSocket: socket,
+
+		drainStop: make(chan any),
+		closed:    false,
+	}
+
+	// And start the routine
+	go drainSocket.drain()
+
+	return drainSocket, nil
 }
 
 // Terminable describes a peer that have a terminate function. Which is the case

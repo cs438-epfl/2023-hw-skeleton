@@ -120,12 +120,8 @@ func runTLC(t require.TestingT, nodeCount, rounds int) {
 		node1 := z.NewTestNode(t, peerFac, transp, "127.0.0.1:0", z.WithTotalPeers(1),
 			z.WithPaxosThreshold(threshold))
 
-		sender, err := transp.CreateSocket("127.0.0.1:0")
+		sender, err := z.NewSenderSocket(transp, "127.0.0.1:0")
 		require.NoError(t, err)
-
-		// Drain incoming messages to avoid intermediary buffers filling up
-		drainStop := z.DrainSocket(sender)
-		defer drainStop()
 
 		node1.AddPeer(sender.GetAddress())
 

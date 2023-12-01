@@ -1106,7 +1106,7 @@ func Test_HW1_Routing_Update(t *testing.T) {
 	node := z.NewTestNode(t, peerFac, transp, "127.0.0.1:0", z.WithMessage(fake, handler))
 	defer node.Stop()
 
-	sender, err := transp.CreateSocket("127.0.0.1:0")
+	sender, err := z.NewSenderSocket(transp, "127.0.0.1:0")
 	require.NoError(t, err)
 
 	getRumorsPacket := func(seq uint, relay string) transport.Packet {

@@ -73,15 +73,11 @@ func spamNode(t require.TestingT, rounds int) {
 		return nil
 	}
 
-	sender, err := transp.CreateSocket("127.0.0.1:0")
+	sender, err := z.NewSenderSocket(transp, "127.0.0.1:0")
 	require.NoError(t, err)
 
 	receiver := z.NewTestNode(t, peerFac, transp, "127.0.0.1:0", z.WithMessage(fake, handler),
 		z.WithContinueMongering(0))
-
-	// Drain incoming messages to avoid intermediary buffers filling up
-	drainStop := z.DrainSocket(sender)
-	defer drainStop()
 
 	src := sender.GetAddress()
 	dst := receiver.GetAddr()

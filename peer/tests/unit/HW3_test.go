@@ -53,7 +53,7 @@ func Test_HW3_Paxos_Acceptor_Prepare_Wrong_Step(t *testing.T) {
 	acceptor := z.NewTestNode(t, peerFac, transp, "127.0.0.1:0", z.WithTotalPeers(1), z.WithPaxosID(1))
 	defer acceptor.Stop()
 
-	proposer, err := transp.CreateSocket("127.0.0.1:0")
+	proposer, err := z.NewSenderSocket(transp, "127.0.0.1:0")
 	require.NoError(t, err)
 
 	acceptor.AddPeer(proposer.GetAddress())
@@ -98,7 +98,7 @@ func Test_HW3_Paxos_Acceptor_Prepare_Wrong_ID(t *testing.T) {
 	acceptor := z.NewTestNode(t, peerFac, transp, "127.0.0.1:0", z.WithTotalPeers(1), z.WithPaxosID(1))
 	defer acceptor.Stop()
 
-	proposer, err := transp.CreateSocket("127.0.0.1:0")
+	proposer, err := z.NewSenderSocket(transp, "127.0.0.1:0")
 	require.NoError(t, err)
 
 	acceptor.AddPeer(proposer.GetAddress())
@@ -143,7 +143,7 @@ func Test_HW3_Paxos_Acceptor_Prepare_Correct(t *testing.T) {
 	acceptor := z.NewTestNode(t, peerFac, transp, "127.0.0.1:0", z.WithTotalPeers(1), z.WithPaxosID(1))
 	defer acceptor.Stop()
 
-	proposer, err := transp.CreateSocket("127.0.0.1:0")
+	proposer, err := z.NewSenderSocket(transp, "127.0.0.1:0")
 	require.NoError(t, err)
 
 	acceptor.AddPeer(proposer.GetAddress())
@@ -207,7 +207,7 @@ func Test_HW3_Paxos_Acceptor_Propose_Wrong_Step(t *testing.T) {
 	acceptor := z.NewTestNode(t, peerFac, transp, "127.0.0.1:0", z.WithTotalPeers(1), z.WithPaxosID(1))
 	defer acceptor.Stop()
 
-	proposer, err := transp.CreateSocket("127.0.0.1:0")
+	proposer, err := z.NewSenderSocket(transp, "127.0.0.1:0")
 	require.NoError(t, err)
 
 	acceptor.AddPeer(proposer.GetAddress())
@@ -256,7 +256,7 @@ func Test_HW3_Paxos_Acceptor_Propose_Wrong_ID(t *testing.T) {
 	acceptor := z.NewTestNode(t, peerFac, transp, "127.0.0.1:0", z.WithTotalPeers(1), z.WithPaxosID(1))
 	defer acceptor.Stop()
 
-	proposer, err := transp.CreateSocket("127.0.0.1:0")
+	proposer, err := z.NewSenderSocket(transp, "127.0.0.1:0")
 	require.NoError(t, err)
 
 	acceptor.AddPeer(proposer.GetAddress())
@@ -307,7 +307,7 @@ func Test_HW3_Paxos_Acceptor_Prepare_Already_Promised(t *testing.T) {
 	acceptor := z.NewTestNode(t, peerFac, transp, "127.0.0.1:0", z.WithTotalPeers(2), z.WithPaxosID(1))
 	defer acceptor.Stop()
 
-	proposer, err := transp.CreateSocket("127.0.0.1:0")
+	proposer, err := z.NewSenderSocket(transp, "127.0.0.1:0")
 	require.NoError(t, err)
 
 	acceptor.AddPeer(proposer.GetAddress())
@@ -432,7 +432,7 @@ func Test_HW3_Paxos_Acceptor_Propose_Correct(t *testing.T) {
 	acceptor := z.NewTestNode(t, peerFac, transp, "127.0.0.1:0", z.WithTotalPeers(1), z.WithPaxosID(1))
 	defer acceptor.Stop()
 
-	proposer, err := transp.CreateSocket("127.0.0.1:0")
+	proposer, err := z.NewSenderSocket(transp, "127.0.0.1:0")
 	require.NoError(t, err)
 
 	acceptor.AddPeer(proposer.GetAddress())
@@ -654,7 +654,7 @@ func Test_HW3_TLC_Move_Step_Not_Enough(t *testing.T) {
 	node1 := z.NewTestNode(t, peerFac, transp, "127.0.0.1:0", z.WithAckTimeout(0), z.WithTotalPeers(2))
 	defer node1.Stop()
 
-	socketX, err := transp.CreateSocket("127.0.0.1:0")
+	socketX, err := z.NewSenderSocket(transp, "127.0.0.1:0")
 	require.NoError(t, err)
 
 	node1.AddPeer(socketX.GetAddress())
@@ -730,10 +730,14 @@ func Test_HW3_TLC_Move_Step_OK(t *testing.T) {
 	node1 := z.NewTestNode(t, peerFac, transp, "127.0.0.1:0", z.WithAckTimeout(0), z.WithTotalPeers(2))
 	defer node1.Stop()
 
-	socketX, err := transp.CreateSocket("127.0.0.1:0")
+	socketX, err := z.NewSenderSocket(transp, "127.0.0.1:0")
+	require.NoError(t, err)
+
+	socketY, err := z.NewSenderSocket(transp, "127.0.0.1:0")
 	require.NoError(t, err)
 
 	node1.AddPeer(socketX.GetAddress())
+	node1.AddPeer(socketY.GetAddress())
 
 	// send two TLC messages for the same step
 
@@ -758,19 +762,25 @@ func Test_HW3_TLC_Move_Step_OK(t *testing.T) {
 	transpMsg, err := node1.GetRegistry().MarshalMessage(&tlc)
 	require.NoError(t, err)
 
-	header := transport.NewHeader(socketX.GetAddress(), socketX.GetAddress(), node1.GetAddr(), 0)
+	header1 := transport.NewHeader(socketX.GetAddress(), socketX.GetAddress(), node1.GetAddr(), 0)
+	header2 := transport.NewHeader(socketY.GetAddress(), socketY.GetAddress(), node1.GetAddr(), 0)
 
-	packet := transport.Packet{
-		Header: &header,
+	packet1 := transport.Packet{
+		Header: &header1,
 		Msg:    &transpMsg,
 	}
 
-	err = socketX.Send(node1.GetAddr(), packet, 0)
+	packet2 := transport.Packet{
+		Header: &header2,
+		Msg:    &transpMsg,
+	}
+
+	err = socketX.Send(node1.GetAddr(), packet1, 0)
 	require.NoError(t, err)
 
 	time.Sleep(time.Second * 2)
 
-	err = socketX.Send(node1.GetAddr(), packet, 0)
+	err = socketY.Send(node1.GetAddr(), packet2, 0)
 	require.NoError(t, err)
 
 	time.Sleep(time.Second * 2)
@@ -810,7 +820,7 @@ func Test_HW3_TLC_Move_Step_Catchup(t *testing.T) {
 	node1 := z.NewTestNode(t, peerFac, transp, "127.0.0.1:0", z.WithAckTimeout(0), z.WithTotalPeers(1))
 	defer node1.Stop()
 
-	socketX, err := transp.CreateSocket("127.0.0.1:0")
+	socketX, err := z.NewSenderSocket(transp, "127.0.0.1:0")
 	require.NoError(t, err)
 
 	node1.AddPeer(socketX.GetAddress())
