@@ -1,4 +1,5 @@
-# CS-438 Skeleton Repository (Fall 2023)
+# Archived from Fall 2023
+## CS-438 Skeleton Repository
 
 This is homework material for the CS-438 Decentralized Systems Engineering (Fall 2023) class at EPFL, provided by the DEDIS lab.
 
